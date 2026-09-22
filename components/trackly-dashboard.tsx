@@ -1,32 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  Bell,
-  Bookmark,
-  Car,
-  ChevronDown,
-  CircleHelp,
-  Grid2X2,
-  Headphones,
-  Home,
-  LayoutGrid,
-  Menu,
-  MoreVertical,
-  Plane,
-  Plus,
-  Search,
-  Settings,
-  ShoppingBag,
-  Sparkles,
-  Tag,
-  TrendingUp,
-  Tv,
-  Watch,
-  Zap,
-} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Bell, Bookmark, Car, Check, ChevronDown, CircleHelp, Grid2X2, Home, LayoutGrid, MoreVertical, Plane, Plus, Search, Settings, ShoppingBag, Sparkles, Tag, TrendingUp, Tv, Watch, X, Zap } from 'lucide-react'
 
-const watches = [
+type WatchItem = { title: string; type: string; tone: string; detail: string; price: string; checked: string; icon: string; dates?: string }
+
+const initialWatches: WatchItem[] = [
   { title: 'Nike Pegasus 41', type: 'Product', tone: 'green', detail: 'Under ₹5,000  •  Any website', price: '₹5,299', checked: '2 hours ago', icon: 'shoe' },
   { title: 'iPhone 15 (128GB)', type: 'Product', tone: 'green', detail: 'Under ₹60,000  •  Amazon, Flipkart', price: '₹62,999', checked: '1 hour ago', icon: 'phone' },
   { title: 'Delhi → Goa', type: 'Flight', tone: 'blue', detail: 'Under ₹6,000  •  Any platform', price: '₹7,249', checked: '3 hours ago', icon: 'flight', dates: 'Travel dates: 10 Apr – 15 Apr' },
@@ -35,47 +15,30 @@ const watches = [
   { title: 'Goa – 2 Nights', type: 'Hotel', tone: 'green', detail: 'Under ₹2,500/night  •  Any platform', price: '₹3,100', checked: '6 hours ago', icon: 'hotel', dates: 'Dates: 12 Apr – 14 Apr' },
 ]
 
-const navItems = [
-  [Home, 'Dashboard'], [Plus, 'Add Watch'], [Watch, 'My Watches'], [Bell, 'Notifications'], [Bookmark, 'Saved Searches'], [Grid2X2, 'Platforms'], [Settings, 'Settings'],
-]
+const navItems = [[Home, 'Dashboard', '/'], [Plus, 'Add Watch', '/add-watch'], [Watch, 'My Watches', '/watches'], [Bell, 'Notifications', '/notifications'], [Bookmark, 'Saved Searches', '/saved-searches'], [Grid2X2, 'Platforms', '/platforms'], [Settings, 'Settings', '/settings']] as const
+let runtimeWatches = [...initialWatches]
 
-function ProductThumb({ kind }: { kind: string }) {
-  return <div className={`product-thumb ${kind}`} aria-hidden="true"><div className="thumb-shape" /></div>
-}
+function ProductThumb({ kind }: { kind: string }) { return <div className={`product-thumb ${kind}`} aria-hidden="true"><div className="thumb-shape" /></div> }
 
 export function TracklyDashboard() {
-  const [activeTab, setActiveTab] = useState('All (6)')
-  const [query, setQuery] = useState('')
-  const [added, setAdded] = useState(false)
+  const pathname = usePathname(); const router = useRouter()
+  const [watches, setWatches] = useState(runtimeWatches); const [activeTab, setActiveTab] = useState('All (6)'); const [query, setQuery] = useState(''); const [notice, setNotice] = useState(''); const [selected, setSelected] = useState<WatchItem | null>(null); const [menu, setMenu] = useState<string | null>(null); const [sort, setSort] = useState('Newest First')
+  const isDashboard = pathname === '/'
+  const filtered = useMemo(() => { const category = activeTab.startsWith('Products') ? 'Product' : activeTab.startsWith('Travel') ? ['Flight', 'Ride', 'Hotel'] : activeTab.startsWith('Entertainment') ? 'OTT' : null; const list = category ? watches.filter((item) => Array.isArray(category) ? category.includes(item.type) : item.type === category) : watches; return sort === 'Price lowest' ? [...list].sort((a, b) => Number(a.price.replace(/[^0-9]/g, '') || 0) - Number(b.price.replace(/[^0-9]/g, '') || 0)) : list }, [activeTab, sort, watches])
+  const go = (path: string) => router.push(path)
+  const addWatch = () => { if (!query.trim()) { setNotice('Describe what you want to track first.'); return }; setWatches((current) => { const next = [{ title: query.trim().slice(0, 34), type: 'Product', tone: 'green', detail: 'Under your target price  •  Any website', price: 'Waiting for first check', checked: 'Just now', icon: 'shoe' }, ...current]; runtimeWatches = next; return next }); setQuery(''); setNotice('Watch added successfully.'); go('/watches') }
+  const deleteWatch = (title: string) => { setWatches((current) => { const next = current.filter((item) => item.title !== title); runtimeWatches = next; return next }); setMenu(null); setNotice('Watch removed.') }
 
-  return (
-    <div className="trackly-shell">
-      <header className="topbar">
-        <div className="brand"><div className="brand-mark"><Sparkles /></div><div><div className="brand-name">Trackly <span>Beta</span></div><div className="brand-tagline">Tell it. We&apos;ll watch.</div></div></div>
-        <nav className="topnav"><a className="active">Home</a><a>How it works</a><a>Supported Platforms</a><a>Pricing</a></nav>
-        <div className="top-actions"><Search /><Bell className="notification-icon" /><span className="avatar">A</span><span>Ankit</span><ChevronDown /></div>
-      </header>
-      <div className="body-grid">
-        <aside className="sidebar">
-          <div className="sidebar-links">{navItems.map(([Icon, label]) => <button key={label as string} className={label === 'Dashboard' ? 'selected' : ''}><Icon /><span>{label as string}</span>{label === 'Notifications' && <b>3</b>}</button>)}</div>
-          <div className="plan-card"><div className="plan-title">Free Plan <CircleHelp /></div><div className="plan-count">3 / 5 active watches</div><div className="progress"><i /></div><button><Zap /> Upgrade Plan</button></div>
-        </aside>
-        <main className="content">
-          <section className="hero">
-            <div className="hero-copy"><h1>What are you looking for?</h1><p>Tell us in your own words. We&apos;ll keep an eye on it.</p></div>
-            <div className="hand-note">One place for all<br />your wants <span>↘</span></div>
-            <div className="watch-input"><Sparkles /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={'e.g. “Nike shoes under ₹5,000”, “Delhi to Jaipur ride under ₹800”, “Interstellar on OTT”…'} /><button onClick={() => setAdded(true)}><Plus /> Add Watch</button></div>
-            <div className="quick-chips">{[[ShoppingBag,'Products'],[Plane,'Flights'],[Car,'Rides'],[Tv,'Movies / OTT'],[LayoutGrid,'Hotels'],[Grid2X2,'More']].map(([Icon, label]) => <button key={label as string}><Icon />{label as string}</button>)}</div>
-            <div className="examples"><b>Examples:</b><span>“iPhone 15 under 60k”</span><span>“Goa flight under 6k next month”</span><span>“Interstellar to rent under 100”</span>{added && <em>Watch added</em>}</div>
-          </section>
-          <section className="watch-section"><div className="section-heading"><h2>My Watches</h2><button className="sort">Newest First <ChevronDown /></button></div><div className="tabs">{['All (6)','Products (3)','Travel (2)','Entertainment (1)'].map((tab) => <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>{tab}</button>)}</div><div className="watch-list">{watches.map((item) => <article className="watch-row" key={item.title}><ProductThumb kind={item.icon} /><div className="watch-info"><div className="watch-title">{item.title} <span className={`pill ${item.tone}`}>{item.type}</span></div><div className="watch-detail">{item.detail}</div><div className="watch-price">{item.price !== 'Not available yet' ? <>Current lowest: <strong>{item.price}</strong> <TrendingUp /></> : <>Not available yet <CircleHelp /></>}</div><div className="watch-time">{item.dates || `Last checked: ${item.checked}`}</div></div><div className="watch-status"><span><i /> Watching</span><button aria-label={`More options for ${item.title}`}><MoreVertical /></button><button className="details">View Details</button></div></article>)}</div></section>
-        </main>
-        <aside className="rightbar"><Panel title="Recent Notifications" action="View all"><Notification kind="shoe" title="Price Drop!" text="Nike Pegasus 41 is now ₹5,299 (down from ₹5,799)" time="2 hours ago" /><Notification kind="flight" title="New Option Found" text="Delhi → Goa flight at ₹6,249" time="5 hours ago" /><Notification kind="headphones" title="Back in Stock" text="Sony WH-1000XM5 is back in stock at ₹29,990" time="1 day ago" /></Panel><Panel title="Price Insights" action="See trends"><div className="sparkline"><svg viewBox="0 0 280 70" preserveAspectRatio="none"><path d="M0 40 L28 26 L55 46 L82 24 L110 25 L138 12 L164 31 L192 17 L220 40 L248 25 L280 43 V70 H0Z" /><polyline points="0,40 28,26 55,46 82,24 110,25 138,12 164,31 192,17 220,40 248,25 280,43" /></svg></div><div className="insight"><TrendingUp /><p>Prices for your watched items are <b>10% lower</b> than last month on average.</p></div></Panel><Panel title="Supported Platforms" action="View all"><div className="platforms">{['Amazon','Flipkart','Myntra','Croma','BlaBlaCar','MakeMyTrip','Netflix','Hotstar'].map((p, i) => <div key={p}><div className={`platform-logo p${i}`}>{p[0]}</div><small>{p}</small></div>)}</div><div className="many">+ Many more...</div></Panel><div className="pro-card"><div className="crown">♛</div><h3>Get More with Pro</h3><p>More watches, faster checks, priority<br />notifications and more.</p><button>Upgrade to Pro <span>→</span></button></div></aside>
-      </div>
-      <footer><div className="footer-brand"><div className="brand-mark"><Sparkles /></div><b>Trackly</b><small>Tell it. We&apos;ll watch.</small></div><div className="footer-links"><span>About</span><span>Privacy</span><span>Terms</span><span>Contact</span><b>𝕏</b><b>in</b><b>▶</b></div></footer>
-    </div>
-  )
+  return <div className="trackly-shell">
+    <header className="topbar"><button className="brand brand-button" onClick={() => go('/')}><div className="brand-mark"><Sparkles /></div><div><div className="brand-name">Trackly <span>Beta</span></div><div className="brand-tagline">Tell it. We&apos;ll watch.</div></div></button><nav className="topnav"><button className={isDashboard ? 'active' : ''} onClick={() => go('/')}>Home</button><button onClick={() => go('/how-it-works')}>How it works</button><button onClick={() => go('/platforms')}>Supported Platforms</button><button onClick={() => go('/pricing')}>Pricing</button></nav><div className="top-actions"><button aria-label="Search" onClick={() => go('/watches')}><Search /></button><button aria-label="Notifications" onClick={() => go('/notifications')}><Bell className="notification-icon" /></button><button className="avatar" onClick={() => go('/settings')}>A</button><button onClick={() => go('/settings')}>Ankit <ChevronDown /></button></div></header>
+    <div className="body-grid"><aside className="sidebar"><div className="sidebar-links">{navItems.map(([Icon, label, path]) => <button key={label} className={pathname === path ? 'selected' : ''} onClick={() => go(path)}><Icon /><span>{label}</span>{label === 'Notifications' && <b>3</b>}</button>)}</div><div className="plan-card"><div className="plan-title">Free Plan <CircleHelp /></div><div className="plan-count">{Math.min(watches.length, 5)} / 5 active watches</div><div className="progress"><i style={{ width: `${Math.min(watches.length, 5) * 20}%` }} /></div><button onClick={() => go('/pricing')}><Zap /> Upgrade Plan</button></div></aside>
+      <main className="content">{isDashboard || pathname === '/watches' || pathname === '/add-watch' ? <><section className="hero"><div className="hero-copy"><h1>What are you looking for?</h1><p>Tell us in your own words. We&apos;ll keep an eye on it.</p></div><div className="hand-note">One place for all<br />your wants <span>↘</span></div><div className="watch-input"><Sparkles /><input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addWatch() }} placeholder={'e.g. “Nike shoes under ₹5,000”, “Delhi to Jaipur ride under ₹800”, “Interstellar on OTT”…'} /><button onClick={addWatch}><Plus /> Add Watch</button></div><div className="quick-chips">{[[ShoppingBag,'Products'],[Plane,'Flights'],[Car,'Rides'],[Tv,'Movies / OTT'],[LayoutGrid,'Hotels'],[Grid2X2,'More']].map(([Icon, label]) => <button key={label as string} onClick={() => setQuery(`${label} under `)}><Icon />{label as string}</button>)}</div><div className="examples"><b>Examples:</b><button onClick={() => setQuery('iPhone 15 under ₹60,000')}>“iPhone 15 under 60k”</button><button onClick={() => setQuery('Goa flight under ₹6,000 next month')}>“Goa flight under 6k next month”</button><button onClick={() => setQuery('Interstellar to rent under ₹100')}>“Interstellar to rent under 100”</button>{notice && <em>{notice}</em>}</div></section><section className="watch-section"><div className="section-heading"><h2>{pathname === '/add-watch' ? 'Create a watch' : 'My Watches'}</h2><button className="sort" onClick={() => setSort(sort === 'Newest First' ? 'Price lowest' : 'Newest First')}>{sort} <ChevronDown /></button></div><div className="tabs">{['All (6)','Products (3)','Travel (2)','Entertainment (1)'].map((tab) => <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>{tab}</button>)}</div><div className="watch-list">{filtered.map((item) => <article className="watch-row" key={item.title}><ProductThumb kind={item.icon} /><div className="watch-info"><div className="watch-title">{item.title} <span className={`pill ${item.tone}`}>{item.type}</span></div><div className="watch-detail">{item.detail}</div><div className="watch-price">{item.price !== 'Not available yet' && item.price !== 'Waiting for first check' ? <>Current lowest: <strong>{item.price}</strong> <TrendingUp /></> : <>{item.price} <CircleHelp /></>}</div><div className="watch-time">{item.dates || `Last checked: ${item.checked}`}</div></div><div className="watch-status"><span><i /> Watching</span><button aria-label={`More options for ${item.title}`} onClick={() => setMenu(menu === item.title ? null : item.title)}><MoreVertical /></button>{menu === item.title && <div className="row-menu"><button onClick={() => setSelected(item)}>View details</button><button onClick={() => deleteWatch(item.title)}>Remove watch</button></div>}<button className="details" onClick={() => setSelected(item)}>View Details</button></div></article>)}</div></section></> : <GenericPage pathname={pathname} go={go} />}</main>
+      <aside className="rightbar"><Panel title="Recent Notifications" action="View all" onAction={() => go('/notifications')}><Notification kind="shoe" title="Price Drop!" text="Nike Pegasus 41 is now ₹5,299 (down from ₹5,799)" time="2 hours ago" /><Notification kind="flight" title="New Option Found" text="Delhi → Goa flight at ₹6,249" time="5 hours ago" /><Notification kind="headphones" title="Back in Stock" text="Sony WH-1000XM5 is back in stock at ₹29,990" time="1 day ago" /></Panel><Panel title="Price Insights" action="See trends" onAction={() => go('/insights')}><div className="sparkline"><svg viewBox="0 0 280 70" preserveAspectRatio="none"><path d="M0 40 L28 26 L55 46 L82 24 L110 25 L138 12 L164 31 L192 17 L220 40 L248 25 L280 43 V70 H0Z" /><polyline points="0,40 28,26 55,46 82,24 110,25 138,12 164,31 192,17 220,40 248,25 280,43" /></svg></div><div className="insight"><TrendingUp /><p>Prices for your watched items are <b>10% lower</b> than last month on average.</p></div></Panel><Panel title="Supported Platforms" action="View all" onAction={() => go('/platforms')}><div className="platforms">{['Amazon','Flipkart','Myntra','Croma','BlaBlaCar','MakeMyTrip','Netflix','Hotstar'].map((p, i) => <div key={p}><div className={`platform-logo p${i}`}>{p[0]}</div><small>{p}</small></div>)}</div><button className="many" onClick={() => go('/platforms')}>+ Many more...</button></Panel><div className="pro-card"><div className="crown">♛</div><h3>Get More with Pro</h3><p>More watches, faster checks, priority<br />notifications and more.</p><button onClick={() => go('/pricing')}>Upgrade to Pro <span>→</span></button></div></aside></div>
+    <footer><button className="footer-brand" onClick={() => go('/')}><div className="brand-mark"><Sparkles /></div><b>Trackly</b><small>Tell it. We&apos;ll watch.</small></button><div className="footer-links"><button onClick={() => go('/about')}>About</button><button onClick={() => go('/privacy')}>Privacy</button><button onClick={() => go('/terms')}>Terms</button><button onClick={() => go('/contact')}>Contact</button><b>𝕏</b><b>in</b><b>▶</b></div></footer>
+    {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><div className="detail-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}><button className="modal-close" onClick={() => setSelected(null)}><X /></button><ProductThumb kind={selected.icon} /><h2>{selected.title}</h2><span className={`pill ${selected.tone}`}>{selected.type}</span><p>{selected.detail}</p><div className="detail-stat"><span>Current lowest</span><strong>{selected.price}</strong></div><button className="primary-action" onClick={() => { setNotice('We will notify you when this watch changes.'); setSelected(null) }}><Check /> Keep watching</button></div></div>}
+  </div>
 }
 
-function Panel({ title, action, children }: { title: string, action: string, children: React.ReactNode }) { return <section className="panel"><div className="panel-heading"><h3>{title}</h3><a>{action}</a></div>{children}</section> }
-function Notification({ kind, title, text, time }: { kind: string, title: string, text: string, time: string }) { return <div className="notification"><ProductThumb kind={kind} /><div><b>{title}</b><p>{text}</p><small>{time}</small></div><i /></div> }
+function GenericPage({ pathname, go }: { pathname: string; go: (path: string) => void }) { const title = pathname.slice(1).replaceAll('-', ' ') || 'dashboard'; return <section className="generic-page"><div className="generic-icon"><Tag /></div><h1>{title.replace(/\b\w/g, (c) => c.toUpperCase())}</h1><p>This area is ready for your Trackly workflow. Connect it to your watches, notifications, and preferences.</p><button className="primary-action" onClick={() => go('/')}><Home /> Back to dashboard</button></section> }
+function Panel({ title, action, onAction, children }: { title: string; action: string; onAction: () => void; children: React.ReactNode }) { return <section className="panel"><div className="panel-heading"><h3>{title}</h3><button onClick={onAction}>{action}</button></div>{children}</section> }
+function Notification({ kind, title, text, time }: { kind: string; title: string; text: string; time: string }) { return <div className="notification"><ProductThumb kind={kind} /><div><b>{title}</b><p>{text}</p><small>{time}</small></div><i /></div> }
