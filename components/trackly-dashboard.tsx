@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { gsap } from 'gsap'
+import { useGSAP } from '@gsap/react'
 import { Bell, Bookmark, Car, Check, ChevronDown, CircleHelp, Grid2X2, Home, LayoutGrid, MoreVertical, Plane, Plus, Search, Settings, ShoppingBag, Sparkles, Tag, TrendingUp, Tv, Watch, X, Zap } from 'lucide-react'
 
 type WatchItem = { title: string; type: string; tone: string; detail: string; price: string; checked: string; icon: string; dates?: string }
@@ -24,8 +26,19 @@ export function TracklyDashboard() {
   const pathname = usePathname(); const router = useRouter()
   const [watches, setWatches] = useState(runtimeWatches); const [activeTab, setActiveTab] = useState('All (6)'); const [query, setQuery] = useState(''); const [notice, setNotice] = useState(''); const [selected, setSelected] = useState<WatchItem | null>(null); const [menu, setMenu] = useState<string | null>(null); const [sort, setSort] = useState('Newest First')
   const isDashboard = pathname === '/'
+  const { contextSafe } = useGSAP()
   const filtered = useMemo(() => { const category = activeTab.startsWith('Products') ? 'Product' : activeTab.startsWith('Travel') ? ['Flight', 'Ride', 'Hotel'] : activeTab.startsWith('Entertainment') ? 'OTT' : null; const list = category ? watches.filter((item) => Array.isArray(category) ? category.includes(item.type) : item.type === category) : watches; return sort === 'Price lowest' ? [...list].sort((a, b) => Number(a.price.replace(/[^0-9]/g, '') || 0) - Number(b.price.replace(/[^0-9]/g, '') || 0)) : list }, [activeTab, sort, watches])
-  const go = (path: string) => router.push(path)
+  const go = contextSafe((path: string) => {
+    if (path === pathname) return
+    const content = document.querySelector('.content')
+    if (!content) { router.push(path); return }
+    gsap.killTweensOf(content)
+    gsap.to(content, { opacity: 0, y: 10, duration: 0.16, ease: 'power2.in', onComplete: () => router.push(path) })
+  })
+  useGSAP(() => {
+    gsap.fromTo('.content', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' })
+    gsap.fromTo('.watch-row, .panel, .hero', { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.035, delay: 0.06, ease: 'power2.out' })
+  }, { dependencies: [pathname], revertOnUpdate: true })
   const addWatch = () => { if (!query.trim()) { setNotice('Describe what you want to track first.'); return }; setWatches((current) => { const next = [{ title: query.trim().slice(0, 34), type: 'Product', tone: 'green', detail: 'Under your target price  •  Any website', price: 'Waiting for first check', checked: 'Just now', icon: 'shoe' }, ...current]; runtimeWatches = next; return next }); setQuery(''); setNotice('Watch added successfully.'); go('/watches') }
   const deleteWatch = (title: string) => { setWatches((current) => { const next = current.filter((item) => item.title !== title); runtimeWatches = next; return next }); setMenu(null); setNotice('Watch removed.') }
 
